@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="go build probe" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="go-hls-encoder" />
+    <working_directory value="$PROJECT_DIR$/" />
+    <go_parameters value="-i" />
+    <kind value="PACKAGE" />
+    <filePath value="$PROJECT_DIR$/" />
+    <package value="github.com/allezxandre/go-hls-encoder/probe" />
+    <directory value="$PROJECT_DIR$/" />
+    <method />
+  </configuration>
+</component>

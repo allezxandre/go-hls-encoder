@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Build all" type="CompoundRunConfigurationType" factoryName="Compound Run Configuration">
+    <toRun type="GoApplicationRunConfiguration" name="go build converter" />
+    <toRun type="GoApplicationRunConfiguration" name="go build iframe-playlist-generator" />
+    <toRun type="GoApplicationRunConfiguration" name="go build probe" />
+    <toRun type="GoApplicationRunConfiguration" name="go build suggest" />
+    <method />
+  </configuration>
+</component>
