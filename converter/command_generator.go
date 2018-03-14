@@ -39,7 +39,6 @@ func videoConversionArgs(variants []suggest.VideoVariant) (args []string) {
 			)
 		}
 	}
-
 	return
 }
 

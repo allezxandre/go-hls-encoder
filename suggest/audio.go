@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/allezxandre/go-hls-encoder/input"
 	"github.com/allezxandre/go-hls-encoder/probe"
 	"gitlab.com/joutube/joutube-server/jt-error"
 	"strconv"
@@ -39,16 +40,6 @@ const (
 	SurroundSound AudioVariantType = 6
 )
 
-type Language string
-
-const ( // https://tools.ietf.org/html/rfc5646
-	Unknown         Language = ""
-	FrenchLanguage           = "fr"
-	QuebecLanguage           = "fr-CA"
-	TrueFrench               = "fr-FR"
-	EnglishLanguage          = "en"
-)
-
 type AudioVariant struct {
 	MapInput        string           // The map value: in the form of $input:$stream
 	Codec           string           // Codec to use, or "copy". Required.
@@ -57,9 +48,9 @@ type AudioVariant struct {
 	ConvertToStereo bool             // If true, this variant is downsampling Surround to Stereo
 
 	// M3U8 Playlist options: https://tools.ietf.org/html/draft-pantos-http-live-streaming-23
-	GroupID        *string  // Optional group ID. "audio" will be used if `nil`
-	Name           string   // Unique name for variant. Required.
-	Language       Language // Primary language https://tools.ietf.org/html/rfc5646
+	GroupID        *string        // Optional group ID. "audio" will be used if `nil`
+	Name           string         // Unique name for variant. Required.
+	Language       input.Language // Primary language https://tools.ietf.org/html/rfc5646
 	DescribesVideo *bool
 }
 
@@ -185,8 +176,8 @@ func removeVFQAudio(variants []AudioVariant) []AudioVariant {
 	hasFrench := false
 	filteredVariants := make([]AudioVariant, 0)
 	for _, variant := range variants {
-		hasFrench = hasFrench || variant.Language == FrenchLanguage || variant.Language == TrueFrench
-		if variant.Language != QuebecLanguage {
+		hasFrench = hasFrench || variant.Language == input.FrenchLanguage || variant.Language == input.TrueFrench
+		if variant.Language != input.QuebecLanguage {
 			filteredVariants = append(filteredVariants, variant)
 		}
 	}

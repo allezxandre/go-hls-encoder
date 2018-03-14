@@ -2,6 +2,7 @@ package suggest
 
 import (
 	"fmt"
+	"github.com/allezxandre/go-hls-encoder/input"
 	"log"
 	"strings"
 )
@@ -48,7 +49,7 @@ func (v AudioVariant) Stanza(streamPlaylistFilename string) string {
 		log.Println("WARNING: Unknown number of channels")
 	}
 	// Language
-	if v.Language != Unknown {
+	if v.Language != input.Unknown {
 		optionsList = append(optionsList,
 			fmt.Sprintf("LANGUAGE=\"%v\"", v.Language))
 	}
@@ -78,7 +79,7 @@ func (v SubtitleVariant) Stanza(streamPlaylistFilename string) string {
 		"AUTOSELECT=YES",
 		fmt.Sprintf("GROUP-ID=\"%v\"", groupID),
 		fmt.Sprintf("NAME=\"%v\"", v.Name))
-	if v.Language != Unknown {
+	if v.Language != input.Unknown {
 		optionsList = append(optionsList,
 			fmt.Sprintf("LANGUAGE=\"%v\"", v.Language))
 	}

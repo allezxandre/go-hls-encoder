@@ -1,6 +1,7 @@
 package suggest
 
 import (
+	"github.com/allezxandre/go-hls-encoder/input"
 	"github.com/allezxandre/go-hls-encoder/probe"
 	"strconv"
 )
@@ -13,14 +14,16 @@ type SubtitleVariant struct {
 	GroupID         *string // Optional group ID. "subtitles" will be used if `nil`
 	HearingImpaired bool
 	Forced          bool
-	Language        Language // Primary language https://tools.ietf.org/html/rfc5646
+	Language        input.Language // Primary language https://tools.ietf.org/html/rfc5646
 }
 
 var DefaultSubtitlesGroupID = "subtitles"
 
-func SuggestSubtitlesVariants(probeDataInputs []*probe.ProbeData, removeVFQ bool) (variants []SubtitleVariant) {
-	languages := make(map[Language][]SubtitleVariant)
+func SuggestSubtitlesVariants(probeDataInputs []*probe.ProbeData, additionalInputs []input.SubtitleInput, removeVFQ bool) []SubtitleVariant {
 	// Create a map of languages to their subtitles
+	languages := make(map[input.Language][]SubtitleVariant)
+
+	// First using the probe data...
 	for inputIndex, probeData := range probeDataInputs {
 		for streamIndex, stream := range probeData.Streams {
 			if stream.CodecType == "subtitle" && stream.CodecName != "hdmv_pgs_subtitle" {
@@ -36,9 +39,30 @@ func SuggestSubtitlesVariants(probeDataInputs []*probe.ProbeData, removeVFQ bool
 			}
 		}
 	}
+
+	// Then using the additionalInputs, if any
+	nbInputs := len(probeDataInputs) // The number of streams already mapped
+	for inputIndex, subtitleInput := range additionalInputs {
+		realInputIndex := nbInputs + inputIndex
+		variant := SubtitleVariant{
+			MapInput:        strconv.Itoa(realInputIndex) + ":" + strconv.Itoa(int(subtitleInput.StreamIndex)),
+			Language:        subtitleInput.Language,
+			Name:            subtitleInput.Name,
+			HearingImpaired: subtitleInput.HearingImpaired,
+			Forced:          subtitleInput.Forced,
+		}
+		languages[subtitleInput.Language] = append(languages[subtitleInput.Language], variant)
+	}
+
+	// Only keep one per language
+	variants := cleanVariants(languages, removeVFQ)
+	return variants
+}
+
+func cleanVariants(languages map[input.Language][]SubtitleVariant, removeVFQ bool) (variants []SubtitleVariant) {
 	// For each language...
 	for language, subtitleVariants := range languages {
-		if removeVFQ && language == QuebecLanguage {
+		if removeVFQ && language == input.QuebecLanguage {
 			// Skip VFQ
 			continue
 		}
@@ -62,5 +86,5 @@ func SuggestSubtitlesVariants(probeDataInputs []*probe.ProbeData, removeVFQ bool
 			}
 		}
 	}
-	return
+	return variants
 }

@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"github.com/allezxandre/go-hls-encoder/iframe-playlist-generator"
+	"github.com/allezxandre/go-hls-encoder/input"
 	"github.com/allezxandre/go-hls-encoder/probe"
 	"github.com/allezxandre/go-hls-encoder/suggest"
 	"io"
@@ -31,7 +32,7 @@ var hlsSettings = []string{
 	"-hls_flags", "split_by_time",
 }
 
-func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, inputs ...string) (*Conversion, error) {
+func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, additionalSubtitleInputs []input.SubtitleInput, inputs ...string) (*Conversion, error) {
 	// Probe data
 	probeData, err := probe.GetProbeData(inputs...)
 	if err != nil {
@@ -41,7 +42,7 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, input
 	// Figure out variants
 	videoVariants := suggest.SuggestVideoVariants(probeData)
 	audioVariants := suggest.SuggestAudioVariants(probeData, false, true)
-	subtitleVariants := suggest.SuggestSubtitlesVariants(probeData, true)
+	subtitleVariants := suggest.SuggestSubtitlesVariants(probeData, additionalSubtitleInputs, true)
 	maxSubs := len(videoVariants) + len(audioVariants) // FIXME
 	if maxSubs < len(subtitleVariants) {
 		subtitleVariants = subtitleVariants[:maxSubs]
@@ -54,6 +55,9 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, input
 	// ... add inputs
 	for _, input := range inputs {
 		args = append(args, "-i", input)
+	}
+	for _, additionalSubtitleInput := range additionalSubtitleInputs {
+		args = append(args, "-i", additionalSubtitleInput.InputURL)
 	}
 
 	// ... add variants

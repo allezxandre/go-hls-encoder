@@ -1,13 +1,14 @@
 package suggest
 
 import (
+	"github.com/allezxandre/go-hls-encoder/input"
 	"github.com/allezxandre/go-hls-encoder/probe"
 	"regexp"
 	"strings"
 )
 
-func matchLanguage(stream *probe.ProbeStream) Language {
-	currentGuess := Unknown
+func matchLanguage(stream *probe.ProbeStream) input.Language {
+	currentGuess := input.Unknown
 	// Match title
 	if len(stream.Tags.Title) > 0 {
 		matchVFF := regexp.MustCompile(`\b(vff|true(\b)*french)\b`)
@@ -18,13 +19,13 @@ func matchLanguage(stream *probe.ProbeStream) Language {
 		switch {
 		// If VFQ or VFF, just return right away
 		case matchVFF.MatchString(titleString):
-			return TrueFrench
+			return input.TrueFrench
 		case matchVFQ.MatchString(titleString):
-			return QuebecLanguage
+			return input.QuebecLanguage
 		case matchFrench.MatchString(titleString):
-			currentGuess = FrenchLanguage // Just a guess for now
+			currentGuess = input.FrenchLanguage // Just a guess for now
 		case matchEnglish.MatchString(titleString):
-			currentGuess = EnglishLanguage
+			currentGuess = input.EnglishLanguage
 		}
 	}
 	// Match language tag
@@ -36,9 +37,9 @@ func matchLanguage(stream *probe.ProbeStream) Language {
 	languageString := strings.ToLower(stream.Tags.Language)
 	switch {
 	case matchFrench.MatchString(languageString):
-		return FrenchLanguage
+		return input.FrenchLanguage
 	case matchEnglish.MatchString(languageString):
-		return EnglishLanguage
+		return input.EnglishLanguage
 	default:
 		return currentGuess
 	}
