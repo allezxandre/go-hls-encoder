@@ -9,3 +9,6 @@ ____
     - [HTTP Live Streaming (landing page)](https://developer.apple.com/streaming/)
     - [About HTTP Live Streaming](https://developer.apple.com/library/content/referencelibrary/GettingStarted/AboutHTTPLiveStreaming/about/about.html)
     - [Best Practices for Creating and Deploying HTTP Live Streaming Media for Apple Devices](https://developer.apple.com/library/content/technotes/tn2224/_index.html)
+* HLS:
+    - [HLS RFC Specification](https://tools.ietf.org/html/rfc8216)
+    - [WebVTT Segmenting issue on ffmpeg](https://trac.ffmpeg.org/ticket/4048)
