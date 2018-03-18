@@ -64,8 +64,8 @@ type ProbeStream struct {
 	StartPts           int               `json:"start_pts"`
 	StartTime          string            `json:"start_time"`
 	DurationTs         uint64            `json:"duration_ts"`
-	Duration           string            `json:"duration"`
-	BitRate            string            `json:"bit_rate"`
+	Duration           float64           `json:"duration,string"`
+	BitRate            int               `json:"bit_rate,string"`
 	BitsPerRawSample   string            `json:"bits_per_raw_sample"`
 	NbFrames           string            `json:"nb_frames"`
 	Disposition        StreamDisposition `json:"disposition,omitempty"`
