@@ -1,0 +1,13 @@
+WEBVTT
+
+00:00.000 --> 00:07.000
+Test line 1, spans segments 0 and 1
+
+00:07.000 --> 00:08.000
+Test line 2, contained in segment 1
+
+00:16.000 --> 00:18.000
+Test line 3, should be in segment 3 after an empty segment 2
+
+00:18.000 --> 00:40.000
+Test line 4, should span several segments
