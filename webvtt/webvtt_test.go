@@ -9,7 +9,7 @@ import (
 )
 
 func TestRead(t *testing.T) {
-	c := make(chan SubtitleBlock)
+	// This test comes from https://trac.ffmpeg.org/ticket/4048
 	f, err := os.Open("tests/test1.vtt")
 	if err != nil {
 		t.Error("Cannot read test vtt file:", err)
@@ -21,7 +21,8 @@ func TestRead(t *testing.T) {
 	}
 	fmt.Printf("Output directory: %q\n", outputDir)
 
+	c := make(chan SubtitleBlock)
 	go ReadFromWebVTT(f, c)
-	Segment(c, 5*time.Second, outputDir, "test1")
+	segment(c, 5*time.Second, outputDir, "test1")
 	// TODO: Test output
 }

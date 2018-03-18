@@ -65,37 +65,13 @@ func audioConversionArgs(variants []suggest.AudioVariant) (args []string) {
 	return
 }
 
-func subtitlesConversionArgs(variants []suggest.SubtitleVariant) (args []string) {
-	for outputIndex, variant := range variants {
-		indexS := strconv.Itoa(outputIndex)
-		// Map & codec
-		args = append(args,
-			"-map", variant.MapInput,
-			"-c:s:"+indexS, "webvtt")
-	}
-
-	return
-}
-
-func variantsMapArg(videoVariants []suggest.VideoVariant, audioVariants []suggest.AudioVariant, subtitleVariants []suggest.SubtitleVariant) string {
+func variantsMapArg(videoVariants []suggest.VideoVariant, audioVariants []suggest.AudioVariant) string {
 	mapArray := make([]string, 0, len(videoVariants)+len(audioVariants))
-	subIdx := 0
-	subIdxMax := len(subtitleVariants)
 	for variantIndex := range videoVariants {
-		subVariantString := ""
-		if subIdx < subIdxMax {
-			subVariantString = ",s:" + strconv.Itoa(subIdx)
-			subIdx += 1
-		}
-		mapArray = append(mapArray, "v:"+strconv.Itoa(variantIndex)+subVariantString)
+		mapArray = append(mapArray, "v:"+strconv.Itoa(variantIndex))
 	}
 	for variantIndex := range audioVariants {
-		subVariantString := ""
-		if subIdx < subIdxMax {
-			subVariantString = ",s:" + strconv.Itoa(subIdx)
-			subIdx += 1
-		}
-		mapArray = append(mapArray, "a:"+strconv.Itoa(variantIndex)+subVariantString)
+		mapArray = append(mapArray, "a:"+strconv.Itoa(variantIndex))
 	}
 	return strings.Join(mapArray, " ")
 }

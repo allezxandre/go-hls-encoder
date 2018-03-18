@@ -13,12 +13,42 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type Conversion struct {
-	StreamURLs      []string
-	Command         *exec.Cmd
-	OutputDirectory string
+	StreamURLs                 []string
+	mainCommand                *exec.Cmd
+	SubtitleConversionCommands []SubtitleVariantConversion
+	OutputDirectory            string
+}
+
+// Applies function f to all commands related to the conversion
+func (c Conversion) do(f func(cmd *exec.Cmd)) {
+	f(c.mainCommand)
+	for _, subConv := range c.SubtitleConversionCommands {
+		f(subConv.commands.EncoderCommand)
+	}
+}
+
+func (c Conversion) Signal(sig syscall.Signal) {
+	c.do(func(cmd *exec.Cmd) {
+		cmd.Process.Signal(sig)
+	})
+}
+
+func (c Conversion) SigInt() {
+	c.Signal(syscall.SIGINT)
+}
+
+// Exit Kills all remaining ongoing conversion
+func (c Conversion) Exit() {
+	c.do(func(cmd *exec.Cmd) {
+		if cmd.ProcessState == nil || !cmd.ProcessState.Exited() {
+			// Process is not done
+			cmd.Process.Kill()
+		}
+	})
 }
 
 var hlsSettings = []string{
@@ -32,6 +62,10 @@ var hlsSettings = []string{
 	"-hls_flags", "split_by_time",
 }
 
+func ffmpegDefaultArguments() []string {
+	return []string{"-hide_banner", "-y", "-stats", "-loglevel", "warning"}
+}
+
 func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, additionalSubtitleInputs []input.SubtitleInput, inputs ...string) (*Conversion, error) {
 	// Probe data
 	probeData, err := probe.GetProbeData(inputs...)
@@ -42,35 +76,25 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, addit
 	// Figure out variants
 	videoVariants := suggest.SuggestVideoVariants(probeData)
 	audioVariants := suggest.SuggestAudioVariants(probeData, false, true)
-	subtitleVariants := suggest.SuggestSubtitlesVariants(probeData, additionalSubtitleInputs, true)
-	maxSubs := len(videoVariants) + len(audioVariants) // FIXME
-	if maxSubs < len(subtitleVariants) {
-		subtitleVariants = subtitleVariants[:maxSubs]
-		log.Println("Warning: some subtitles won't be copied as you can't have " +
-			"subtitle-only variants and there aren't enough other video and audio variants.")
-	}
+	subtitleVariants := suggest.SuggestSubtitlesVariants(inputs, probeData, additionalSubtitleInputs, true)
 
 	// Generate FFMPEG command
-	args := []string{"-hide_banner", "-y", "-stats", "-loglevel", "warning"}
+	args := ffmpegDefaultArguments()
 	// ... add inputs
 	for _, input := range inputs {
 		args = append(args, "-i", input)
 	}
-	for _, additionalSubtitleInput := range additionalSubtitleInputs {
-		args = append(args, "-i", additionalSubtitleInput.InputURL)
-	}
+	// Additional subtitle inputs will be added later
 
-	// ... add variants
+	// ... add video and audio variants
 	args = append(args, videoConversionArgs(videoVariants)...)
 	args = append(args, audioConversionArgs(audioVariants)...)
-	args = append(args, subtitlesConversionArgs(subtitleVariants)...)
 	// ... add HLS options
 	args = append(args, hlsSettings...)
 	// ... add HLS variants mapping
-	args = append(args, "-var_stream_map", variantsMapArg(videoVariants, audioVariants, subtitleVariants))
+	args = append(args, "-var_stream_map", variantsMapArg(videoVariants, audioVariants))
 
 	// Create stream playlist
-
 	if err := os.MkdirAll(outputDir, 0700); err != nil {
 		log.Println("Cannot create conversion dir at path '"+outputDir+"':", err)
 		return nil, err // FIXME: return better error
@@ -80,7 +104,7 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, addit
 	// HLS options
 	args = append(args, "-max_muxing_queue_size", "1024", outputFile)
 
-	// Start conversion
+	// Start video and audio conversion
 	var cmd *exec.Cmd
 	masterCh := make(chan string)
 	cmd, err = callFFmpeg(filepath.Join(outputDir, "conversion.log"), args, masterCh)
@@ -88,6 +112,9 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, addit
 		close(masterCh)
 		return nil, err
 	}
+
+	// Start subtitles conversion
+	convertedSubtitles := convertSubtitles(subtitleVariants, outputDir)
 
 	// Generate master playlist
 	masterFilename := filepath.Join(outputDir, masterPlaylistName+".m3u8")
@@ -112,10 +139,10 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, addit
 		}
 	}
 	// ... find subtitles groups
-	if len(subtitleVariants) > 0 {
+	if len(convertedSubtitles) > 0 {
 		subtitlesGroup = &suggest.DefaultSubtitlesGroupID
-		if subtitleVariants[0].GroupID != nil {
-			subtitlesGroup = subtitleVariants[0].GroupID
+		if convertedSubtitles[0].Variant.GroupID != nil {
+			subtitlesGroup = convertedSubtitles[0].Variant.GroupID
 		}
 	}
 	// ... write audio
@@ -127,8 +154,9 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, addit
 	f.WriteString("\n")
 	// ... write subtitles
 	streamIndex = 0 // Subtitle playlists restart at 0
-	for _, variant := range subtitleVariants {
-		f.WriteString(variant.Stanza(playlistFilenameForSubtitlesStream(streamPlaylistName, streamIndex)) + "\n")
+	for _, c := range convertedSubtitles {
+		fmt.Printf("DEBUG: Adding subtitle %q to Master\n", c.Variant.Name)
+		f.WriteString(c.Variant.Stanza() + "\n")
 		streamIndex += 1
 	}
 	f.WriteString("\n\n")
@@ -149,9 +177,10 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, addit
 	f.Close()
 
 	return &Conversion{
-		StreamURLs:      inputs,
-		Command:         cmd,
-		OutputDirectory: outputDir,
+		StreamURLs:                 inputs,
+		mainCommand:                cmd,
+		SubtitleConversionCommands: convertedSubtitles,
+		OutputDirectory:            outputDir,
 	}, nil
 }
 
@@ -207,8 +236,4 @@ func callFFmpeg(logFilename string, args []string, masterCh <-chan string) (*exe
 
 func playlistFilenameForStream(streamPlaylistName string, index int) string {
 	return streamPlaylistName + "_" + strconv.Itoa(index) + ".m3u8"
-}
-
-func playlistFilenameForSubtitlesStream(streamPlaylistName string, index int) string {
-	return streamPlaylistName + "_" + strconv.Itoa(index) + "_vtt.m3u8"
 }

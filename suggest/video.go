@@ -48,8 +48,8 @@ func SuggestVideoVariants(probeDataInputs []*probe.ProbeData) (variants []VideoV
 			// Found a video in this input
 			videoStream := probeData.Streams[masterVideoIndex]
 			bandwidth := 7000000 // FIXME: Handle unknown bandwidth
-			if bandwitdhInt, err := strconv.Atoi(videoStream.BitRate); err == nil {
-				bandwidth = bandwitdhInt
+			if videoStream.BitRate > 0 {
+				bandwidth = videoStream.BitRate
 			}
 			// Match codec
 			switch videoStream.CodecName {

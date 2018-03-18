@@ -68,7 +68,9 @@ func (v AudioVariant) Stanza(streamPlaylistFilename string) string {
 	return "#EXT-X-MEDIA:" + strings.Join(optionsList, ",")
 }
 
-func (v SubtitleVariant) Stanza(streamPlaylistFilename string) string {
+func (v SubtitleVariant) Stanza() string {
+	streamPlaylistFilename := v.PlaylistName("")
+
 	var optionsList []string // The list of options to create the entry
 	groupID := DefaultSubtitlesGroupID
 	if v.GroupID != nil {

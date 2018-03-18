@@ -11,7 +11,7 @@ func matchLanguage(stream *probe.ProbeStream) input.Language {
 	currentGuess := input.Unknown
 	// Match title
 	if len(stream.Tags.Title) > 0 {
-		matchVFF := regexp.MustCompile(`\b(vff|true(\b)*french)\b`)
+		matchVFF := regexp.MustCompile(`\b(vff|vfi|true(\b)*french)\b`)
 		matchVFQ := regexp.MustCompile(`\bvfq\b|\bqu[eé]bec[a-z]*\b`)
 		matchFrench := regexp.MustCompile(`(fre|french|fran[cç]ais)`)
 		matchEnglish := regexp.MustCompile(`(ang|angl|eng|engl|anglais|english|vo)`)

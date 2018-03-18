@@ -6,6 +6,7 @@ package webvtt
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,7 +19,14 @@ type SubtitleBlock struct {
 	Lines              bytes.Buffer  // A buffer containing the whole block
 }
 
-func Segment(c <-chan SubtitleBlock, targetDuration time.Duration, outputDir, name string) error {
+// Segment Segments the webvtt input from `r`
+func Segment(r io.Reader, targetDuration time.Duration, outputDir, name string) error {
+	c := make(chan SubtitleBlock)
+	go ReadFromWebVTT(r, c)
+	return segment(c, targetDuration, outputDir, name)
+}
+
+func segment(c <-chan SubtitleBlock, targetDuration time.Duration, outputDir, name string) error {
 	playlistPath := filepath.Join(outputDir, name+".m3u8")
 	playlist, err := createPlaylistFile(playlistPath, targetDuration)
 	if err != nil {
