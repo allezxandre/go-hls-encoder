@@ -27,12 +27,13 @@ func masterVideo(fileStreams []*probe.ProbeStream) (streamIndex int, err error) 
 }
 
 type VideoVariant struct {
-	MapInput string  // The map value: in the form of $input:$stream
-	Codec    string  // Codec to use, or "copy". Required.
-	CRF      *int    // Optional. CRF Value.
-	Profile  *string // Optional
-	Level    *string // Required if `Profile` is provided.
-	Bitrate  *string // Optional
+	MapInput   string  // The map value: in the form of $input:$stream
+	Codec      string  // Codec to use, or "copy". Required.
+	CRF        *int    // Optional. CRF Value.
+	Profile    *string // Optional
+	Level      *string // Required if `Profile` is provided.
+	Bitrate    *string // Optional
+	AddHVC1Tag bool    // Add tag `-tag:v hvc1`
 	// Associated Media
 	AudioGroup    *string // Optional Audio Group
 	SubtitleGroup *string // Optional Subtitle Group
@@ -68,22 +69,25 @@ func SuggestVideoVariants(probeDataInputs []*probe.ProbeData) (variants []VideoV
 					MapInput:   strconv.Itoa(inputIndex) + ":" + strconv.Itoa(masterVideoIndex),
 					Codec:      "copy",
 					Resolution: strconv.Itoa(videoStream.Width) + "x" + strconv.Itoa(videoStream.Height),
-					Bandwidth:  strconv.Itoa(bandwidth),
+					Bandwidth:  strconv.Itoa(bandwidth * 2),
+					AddHVC1Tag: true,
 				})
-				// For the x264 variant, compute height setting
-				h264Width, h264Height := computeNewRatio(videoStream)
-				crf := 18
-				variants = append(variants, VideoVariant{
-					MapInput:         strconv.Itoa(inputIndex) + ":" + strconv.Itoa(masterVideoIndex),
-					Codec:            "libx264",
-					CRF:              &crf,
-					ResolutionHeight: &h264Height,
-					Resolution:       strconv.Itoa(h264Width) + "x" + strconv.Itoa(h264Height),
-					Bandwidth:        strconv.Itoa(bandwidth),
-				})
+				/*
+					// For the x264 variant, compute height setting
+					h264Width, h264Height := computeNewRatio(videoStream, 360)
+					crf := 18
+					variants = append(variants, VideoVariant{
+						MapInput:         strconv.Itoa(inputIndex) + ":" + strconv.Itoa(masterVideoIndex),
+						Codec:            "libx264",
+						CRF:              &crf,
+						ResolutionHeight: &h264Height,
+						Resolution:       strconv.Itoa(h264Width) + "x" + strconv.Itoa(h264Height),
+						Bandwidth:        strconv.Itoa(730000),
+					})
+				*/
 			default:
 				// One variant: converter to x264, after computing height setting
-				h264Width, h264Height := computeNewRatio(videoStream)
+				h264Width, h264Height := computeNewRatio(videoStream, 1080)
 				crf := 18
 				variants = append(variants, VideoVariant{
 					MapInput:         strconv.Itoa(inputIndex) + ":" + strconv.Itoa(masterVideoIndex),
@@ -100,11 +104,12 @@ func SuggestVideoVariants(probeDataInputs []*probe.ProbeData) (variants []VideoV
 	return
 }
 
-func computeNewRatio(videoStream *probe.ProbeStream) (int, int) {
+func computeNewRatio(videoStream *probe.ProbeStream, maximumHeight int) (int, int) {
 	h264Height := videoStream.Height // The height of the h264 stream to use
-	if h264Height > 1080 {
-		h264Height = 1080
-		ratio := 1.777778 // Defaults to 16/9
+	if h264Height > maximumHeight {
+		h264Height = maximumHeight
+		// Find aspect ratio
+		ratio := 1.777778 // (16/9)
 		ratioStrings := strings.Split(videoStream.DisplayAspectRatio, ":")
 		if len(ratioStrings) == 2 {
 			a, err1 := strconv.ParseFloat(ratioStrings[0], 64)
@@ -117,6 +122,7 @@ func computeNewRatio(videoStream *probe.ProbeStream) (int, int) {
 		} else {
 			log.Println("WARNING: Unexpected aspect ratio format (" + videoStream.DisplayAspectRatio + "). Defaulting to 16/9")
 		}
+		// Return final resolution
 		return int(float64(h264Height) * ratio), h264Height
 	} else {
 		return videoStream.Width, videoStream.Height

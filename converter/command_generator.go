@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"fmt"
 	"github.com/allezxandre/go-hls-encoder/suggest"
 	"strconv"
 	"strings"
@@ -18,10 +19,14 @@ func videoConversionArgs(variants []suggest.VideoVariant) (args []string) {
 				"-bsf:v:"+indexS, "h264_mp4toannexb",
 				"-pix_fmt", "yuv420p")
 		}
+		// -tag:v hvc1
+		if variant.AddHVC1Tag {
+			args = append(args, "-tag:v:"+indexS, "hvc1")
+		}
 		// Resolution
 		if variant.ResolutionHeight != nil {
 			args = append(args, "-filter:v:"+indexS,
-				"scale=\"trunc(oh*a/2)*2:"+strconv.Itoa(*variant.ResolutionHeight)+"\"")
+				fmt.Sprintf("scale=trunc(oh*a/2)*2:%d", *variant.ResolutionHeight))
 		}
 		// Bitrate
 		if variant.Bitrate != nil {

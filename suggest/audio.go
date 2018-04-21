@@ -9,6 +9,7 @@ import (
 	"github.com/allezxandre/go-hls-encoder/probe"
 	"gitlab.com/joutube/joutube-server/jt-error"
 	"strconv"
+	"strings"
 )
 
 func checkforAACsecondaryAudio(fileStreams []*probe.ProbeStream) (streamIndex int, err error) {
@@ -94,16 +95,16 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 					log.Println("Surround sound detected. Format:", stream.CodecName)
 					// The Master Audio has surround sound
 					switch stream.CodecName {
-					case "ac3":
+					case "aac", "ac3":
 						_, err := checkforAACsecondaryAudio(probeData.Streams)
 						if err != nil {
 							// We didn't find an aac alternate
-							// Copy Dolby Digital
+							// Copy Surround sound
 							variants = append(variants, AudioVariant{
 								MapInput:        mapInput,
 								Type:            audioType,
 								Codec:           "copy",
-								Name:            "Audio " + strconv.Itoa(streamIndex) + " (Dolby Surround)",
+								Name:            fmt.Sprintf("Audio %d (%s Surround)", streamIndex, strings.ToUpper(stream.CodecName)),
 								Language:        language,
 								ConvertToStereo: false,
 							})
@@ -121,19 +122,19 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 								})
 							}
 						} else {
-							// we found the aac 2 channel stream, no need to converter
-							// Copy Dolby Digital
+							// we found the aac 2 channel stream, no need to convert
+							// Copy Surround sound
 							variants = append(variants, AudioVariant{
 								MapInput:        mapInput,
 								Type:            audioType,
 								Codec:           "copy",
-								Name:            "Audio " + strconv.Itoa(streamIndex) + " (Dolby Surround)",
+								Name:            fmt.Sprintf("Audio %d (%s Surround)", streamIndex, strings.ToUpper(stream.CodecName)),
 								Language:        language,
 								ConvertToStereo: false,
 							})
 							// AAC was copied already
 						}
-					case "aac", "truehd", "dca", "dts":
+					case "truehd", "dca", "dts":
 						fallthrough
 					default:
 						// Convert to AAC
