@@ -25,9 +25,13 @@ type SubtitleVariant struct {
 
 var DefaultSubtitlesGroupID = "subtitles"
 
-func SuggestSubtitlesVariants(probeDataInputsURLs []string, probeDataInputs []*probe.ProbeData, additionalInputs []input.SubtitleInput, removeVFQ bool) []SubtitleVariant {
+// SuggestSubtitlesVariants From an array of input URLs and another of the corresponding probe data,
+// SuggestSubtitlesVariants creates an array of suggested subtitle variants to create.
+func SuggestSubtitlesVariants(probeDataInputsURLs []string, probeDataInputs []*probe.ProbeData,
+	additionalSearcher func(languages []input.Language) map[input.Language][]input.SubtitleInput,
+	removeVFQ bool) []SubtitleVariant {
 	// Create a map of languages to their subtitles
-	languages := make(map[input.Language][]SubtitleVariant)
+	languages := map[input.Language][]SubtitleVariant{input.EnglishLanguage: {}, input.FrenchLanguage: {}}
 	var outputIndex uint = 0
 
 	// First using the probe data...
@@ -50,19 +54,29 @@ func SuggestSubtitlesVariants(probeDataInputsURLs []string, probeDataInputs []*p
 		}
 	}
 
-	// Then using the additionalInputs, if any
-	for _, subtitleInput := range additionalInputs {
-		outputIndex += 1
-		variant := SubtitleVariant{
-			InputURL:        subtitleInput.InputURL,
-			StreamIndex:     subtitleInput.StreamIndex,
-			Language:        subtitleInput.Language,
-			Name:            subtitleInput.Name,
-			HearingImpaired: subtitleInput.HearingImpaired,
-			Forced:          subtitleInput.Forced,
-			OutputIndex:     outputIndex,
+	// List all languages that still don't have enough subtitles
+	var languagesToSearch []input.Language
+	for lang, variants := range languages {
+		if len(variants) == 0 {
+			languagesToSearch = append(languagesToSearch, lang)
 		}
-		languages[subtitleInput.Language] = append(languages[subtitleInput.Language], variant)
+	}
+	// Use the additionalSearcher to find subtitles for them
+	additionalInputs := additionalSearcher(languagesToSearch)
+	for _, inputs := range additionalInputs {
+		for _, subtitleInput := range inputs {
+			outputIndex += 1
+			variant := SubtitleVariant{
+				InputURL:        subtitleInput.InputURL,
+				StreamIndex:     subtitleInput.StreamIndex,
+				Language:        subtitleInput.Language,
+				Name:            subtitleInput.Name,
+				HearingImpaired: subtitleInput.HearingImpaired,
+				Forced:          subtitleInput.Forced,
+				OutputIndex:     outputIndex,
+			}
+			languages[subtitleInput.Language] = append(languages[subtitleInput.Language], variant)
+		}
 	}
 
 	// Only keep one per language

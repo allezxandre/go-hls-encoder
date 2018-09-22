@@ -6,6 +6,6 @@
     <toRun type="GoApplicationRunConfiguration" name="go build probe" />
     <toRun type="GoApplicationRunConfiguration" name="go build suggest" />
     <toRun type="GoTestRunConfiguration" name="go test webvtt" />
-    <method />
+    <method v="2" />
   </configuration>
 </component>

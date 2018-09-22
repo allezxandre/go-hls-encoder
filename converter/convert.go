@@ -3,10 +3,7 @@ package converter
 import (
 	"fmt"
 	"github.com/allezxandre/go-hls-encoder/iframe-playlist-generator"
-	"github.com/allezxandre/go-hls-encoder/input"
-	"github.com/allezxandre/go-hls-encoder/probe"
 	"github.com/allezxandre/go-hls-encoder/suggest"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -66,17 +63,9 @@ func ffmpegDefaultArguments() []string {
 	return []string{"-hide_banner", "-y", "-stats", "-loglevel", "warning"}
 }
 
-func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, additionalSubtitleInputs []input.SubtitleInput, inputs ...string) (*Conversion, error) {
-	// Probe data
-	probeData, err := probe.GetProbeData(inputs...)
-	if err != nil {
-		return nil, err
-	}
-
-	// Figure out variants
-	videoVariants := suggest.SuggestVideoVariants(probeData)
-	audioVariants := suggest.SuggestAudioVariants(probeData, false, true)
-	subtitleVariants := suggest.SuggestSubtitlesVariants(inputs, probeData, additionalSubtitleInputs, true)
+func LaunchConversion(outputDir, masterPlaylistName, streamPlaylistName string,
+	videoVariants []suggest.VideoVariant, audioVariants []suggest.AudioVariant, subtitleVariantsCh <-chan []suggest.SubtitleVariant,
+	inputs ...string) (*Conversion, error) {
 
 	// Generate FFMPEG command
 	args := ffmpegDefaultArguments()
@@ -105,16 +94,16 @@ func ConvertFile(outputDir, masterPlaylistName, streamPlaylistName string, addit
 	args = append(args, "-max_muxing_queue_size", "1024", outputFile)
 
 	// Start video and audio conversion
-	var cmd *exec.Cmd
 	masterCh := make(chan string)
-	cmd, err = callFFmpeg(filepath.Join(outputDir, "conversion.log"), args, masterCh)
+	cmd, err := callFFmpeg(filepath.Join(outputDir, "conversion.log"), args, masterCh)
 	if err != nil {
 		close(masterCh)
 		return nil, err
 	}
 
 	// Start subtitles conversion
-	convertedSubtitles := convertSubtitles(subtitleVariants, outputDir)
+	subtitleVariants := <-subtitleVariantsCh
+	convertedSubtitles := callSubtitleConversions(subtitleVariants, outputDir)
 
 	// Generate master playlist
 	masterFilename := filepath.Join(outputDir, masterPlaylistName+".m3u8")
@@ -202,7 +191,7 @@ func callFFmpeg(logFilename string, args []string, masterCh <-chan string) (*exe
 	// TODO: Use a buffer like follows:
 	// var errorBuffer bytes.Buffer
 	// cmd.Stderr = io.MultiWriter(logFile, &errorBuffer)
-	cmd.Stderr = io.MultiWriter(logFile, os.Stderr)
+	cmd.Stderr = logFile
 
 	err = cmd.Start()
 	if err != nil {

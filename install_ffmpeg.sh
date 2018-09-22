@@ -4,8 +4,8 @@ IFS=$'\n\t'
 EXPERIMENTAL=true
 
 echo "== Installing dependencies"
-apt-get update
-apt-get -y install autoconf automake build-essential libass-dev libfreetype6-dev \
+apt update
+apt -y install autoconf automake build-essential libass-dev libfreetype6-dev \
   libtheora-dev libtool libvorbis-dev pkg-config texinfo zlib1g-dev \
   yasm wget cmake mercurial libx264-dev
 

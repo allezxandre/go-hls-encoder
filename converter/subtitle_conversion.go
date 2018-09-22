@@ -7,6 +7,8 @@ import (
 	"github.com/allezxandre/go-hls-encoder/suggest"
 	"github.com/allezxandre/go-hls-encoder/webvtt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -14,6 +16,7 @@ import (
 type subtitleConversionCommand struct {
 	EncoderCommand  *exec.Cmd
 	OutputDir, Name string
+	Logfile         *os.File // The logfile to use, or Nil to use Stderr
 }
 
 type SubtitleVariantConversion struct {
@@ -24,8 +27,13 @@ type SubtitleVariantConversion struct {
 // start Starts the conversion of the subtitles in a new goroutine,
 // and returns a channel that will be closed when the conversion is done.
 func (sCmds subtitleConversionCommand) start() error {
-	// TODO: use a logfile to output conversion
-	// Pipe
+	// Pipe Stderr to logfile
+	if sCmds.Logfile != nil {
+		sCmds.EncoderCommand.Stderr = sCmds.Logfile
+	} else {
+		sCmds.EncoderCommand.Stderr = os.Stderr
+	}
+	// Pipe Stdout to segmenter
 	webvttPipe, err := sCmds.EncoderCommand.StdoutPipe()
 	if err != nil {
 		return err
@@ -49,12 +57,13 @@ func (sCmds subtitleConversionCommand) start() error {
 	return nil
 }
 
-func convertSubtitles(variants []suggest.SubtitleVariant, outputDir string) (conversions []SubtitleVariantConversion) {
+// callSubtitleConversions Starts all subtitle conversions asynchroneously.
+func callSubtitleConversions(variants []suggest.SubtitleVariant, outputDir string) (conversions []SubtitleVariantConversion) {
 	for _, v := range variants {
 		cmds := convertSubtitle(v, outputDir)
 		err := cmds.start()
 		if err != nil {
-			log.Println("Cannot convert variant", v.Name, "\nError:", err)
+			log.Println("Cannot convert subtitle variant", v.Name, "\nError:", err)
 			continue
 		}
 		conversions = append(conversions, SubtitleVariantConversion{
@@ -77,7 +86,21 @@ func convertSubtitle(variant suggest.SubtitleVariant, outputDir string) subtitle
 
 	encode := exec.Command("ffmpeg", args...)
 
-	subtitleCmds := subtitleConversionCommand{EncoderCommand: encode, OutputDir: outputDir, Name: variant.Name}
+	// Set output file
+	logFilename := filepath.Join(outputDir, fmt.Sprint("conversion-%s.log", variant.Name))
+	logFile, err := os.Create(logFilename)
+	if err != nil {
+		log.Println("Cannot create logfile for subtitle conversion command:", err)
+		// FIXME: return error
+		logFile = nil
+	}
+
+	subtitleCmds := subtitleConversionCommand{
+		EncoderCommand: encode,
+		OutputDir:      outputDir,
+		Name:           variant.Name,
+		Logfile:        logFile,
+	}
 
 	return subtitleCmds
 }
