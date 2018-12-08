@@ -83,7 +83,7 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 						variants = append(variants, AudioVariant{
 							MapInput:        mapInput,
 							Type:            audioType,
-							Codec:           "libfdk_aac",
+							Codec:           "aac",
 							Bitrate:         &bitrate,
 							Name:            "Audio " + strconv.Itoa(streamIndex),
 							Language:        language,
@@ -114,7 +114,7 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 								variants = append(variants, AudioVariant{
 									MapInput:        mapInput,
 									Type:            StereoSound,
-									Codec:           "libfdk_aac",
+									Codec:           "aac",
 									Bitrate:         &bitrate,
 									Name:            "Audio " + strconv.Itoa(streamIndex) + " (AAC Stereo)",
 									Language:        language,
@@ -142,7 +142,7 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 						variants = append(variants, AudioVariant{
 							MapInput: mapInput,
 							Type:     audioType,
-							Codec:    "libfdk_aac",
+							Codec:    "aac",
 							Bitrate:  &bitrate1,
 							Name:     "Audio " + strconv.Itoa(streamIndex) + " (AAC Surround)",
 							Language: language,
@@ -153,7 +153,7 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 							variants = append(variants, AudioVariant{
 								MapInput:        mapInput,
 								Type:            StereoSound,
-								Codec:           "libfdk_aac",
+								Codec:           "aac",
 								Bitrate:         &bitrate2,
 								Name:            "Audio " + strconv.Itoa(streamIndex) + " (AAC Stereo)",
 								Language:        language,
