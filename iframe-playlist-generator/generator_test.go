@@ -24,8 +24,8 @@ func TestFFprobe2(t *testing.T) {
 }
 
 func TestVariantsFromMaster(t *testing.T) {
-	masterFile := "tests/bigbuckbunny.m3u8"
-	variants, ty, err := variantsFromMaster(masterFile)
+	masterFile := "tests/master.m3u8"
+	_, variants, ty, err := variantsFromMaster(masterFile)
 	if err != nil {
 		t.Error("Error running function:", err)
 		return
@@ -44,14 +44,14 @@ func TestVariantsFromMaster(t *testing.T) {
 
 func TestIFramePlaylistSegment1(t *testing.T) {
 	segmentURI := "tests/bigbuckbunny-400k-00001.ts"
-	p, err := iframeEntryForSegment("", segmentURI)
+	p, err := iframeEntryForSegment("", 0, segmentURI)
 	if err != nil {
 		t.Error("Error running iframeEntryForSegment:", err)
 		return
 	}
 	length := len(p)
 	if length != 2 {
-		t.Error("Bad lenght:", length)
+		t.Error("Bad length:", length)
 	}
 	if length < 1 {
 		return
@@ -62,11 +62,6 @@ func TestIFramePlaylistSegment1(t *testing.T) {
 		PacketPosition: 3008,
 		PacketSize:     376,
 		Duration:       9.08,
-	}
-	if actualFirstFrame.SegmentURI != expectedFirstFrame.SegmentURI {
-		t.Error("Wrong segment URI. Expected",
-			expectedFirstFrame.SegmentURI,
-			"got", actualFirstFrame.SegmentURI)
 	}
 	if actualFirstFrame.PacketPosition != expectedFirstFrame.PacketPosition {
 		t.Error("Wrong packet position. Expected",
@@ -83,18 +78,23 @@ func TestIFramePlaylistSegment1(t *testing.T) {
 			expectedFirstFrame.Duration,
 			"got", actualFirstFrame.Duration)
 	}
+	if actualFirstFrame.SegmentURI != expectedFirstFrame.SegmentURI {
+		t.Error("Wrong segment URI. Expected",
+			expectedFirstFrame.SegmentURI,
+			"got", actualFirstFrame.SegmentURI)
+	}
 }
 
 func TestIFramePlaylistSegment4(t *testing.T) {
 	segmentURI := "tests/bigbuckbunny-400k-00004.ts"
-	p, err := iframeEntryForSegment("", segmentURI)
+	p, err := iframeEntryForSegment("", 0, segmentURI)
 	if err != nil {
 		t.Error("Error running iframeEntryForSegment:", err)
 		return
 	}
 	length := len(p)
 	if length != 4 {
-		t.Error("Bad lenght:", length)
+		t.Error("Bad length:", length)
 	}
 	if length < 2 {
 		return
@@ -130,7 +130,7 @@ func TestIFramePlaylistSegment4(t *testing.T) {
 
 func TestPlaylistForVariant(t *testing.T) {
 	masterFile := "tests/bigbuckbunny.m3u8"
-	variants, _, _ := variantsFromMaster(masterFile)
+	_, variants, _, _ := variantsFromMaster(masterFile)
 	dir := "tests/"
 	fillVariants(dir, variants...)
 	p, err := iframePlaylistForVariant(dir, variants[0])

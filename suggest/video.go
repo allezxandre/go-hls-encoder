@@ -48,13 +48,26 @@ func SuggestVideoVariants(probeDataInputs []*probe.ProbeData) (variants []VideoV
 		if masterVideoIndex, err := masterVideo(probeData.Streams); err == nil {
 			// Found a video in this input
 			videoStream := probeData.Streams[masterVideoIndex]
-			bandwidth := 7000000 // FIXME: Handle unknown bandwidth
+			bandwidth := 700000 // FIXME: Handle unknown bandwidth
 			if videoStream.BitRate > 0 {
 				bandwidth = videoStream.BitRate
 			}
 			// Match codec
 			switch videoStream.CodecName {
 			case "h264":
+				if videoStream.Height > 540 {
+					// Additional low-quality variant
+					// h264Width, h264Height := computeNewRatio(videoStream, 420)
+					// crf := 28
+					// variants = append(variants, VideoVariant{
+					// 	MapInput:         strconv.Itoa(inputIndex) + ":" + strconv.Itoa(masterVideoIndex),
+					// 	Codec:            "libx264",
+					// 	CRF:              &crf,
+					// 	ResolutionHeight: &h264Height,
+					// 	Resolution:       strconv.Itoa(h264Width) + "x" + strconv.Itoa(h264Height),
+					// 	Bandwidth:        strconv.Itoa(bandwidth / 10),
+					// })
+				}
 				// Only one variant: copy
 				variants = append(variants, VideoVariant{
 					MapInput:   strconv.Itoa(inputIndex) + ":" + strconv.Itoa(masterVideoIndex),
@@ -64,7 +77,7 @@ func SuggestVideoVariants(probeDataInputs []*probe.ProbeData) (variants []VideoV
 				})
 			case "h265", "hevc":
 				// HEVC -> 2 variants: copy and x264
-				log.Println("High efficiency stream detected. Copying and adding alternate h264 stream")
+				log.Println("High efficiency stream detected. Copying...")
 				variants = append(variants, VideoVariant{
 					MapInput:   strconv.Itoa(inputIndex) + ":" + strconv.Itoa(masterVideoIndex),
 					Codec:      "copy",

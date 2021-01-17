@@ -95,8 +95,8 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 					log.Println("Surround sound detected. Format:", stream.CodecName)
 					// The Master Audio has surround sound
 					switch stream.CodecName {
-					case "aac", "ac3":
-						_, err := checkforAACsecondaryAudio(probeData.Streams)
+					case "aac", "ac3", "eac3":
+						idx, err := checkforAACsecondaryAudio(probeData.Streams)
 						if err != nil {
 							// We didn't find an aac alternate
 							// Copy Surround sound
@@ -128,7 +128,7 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 								MapInput:        mapInput,
 								Type:            audioType,
 								Codec:           "copy",
-								Name:            fmt.Sprintf("Audio %d (%s Surround)", streamIndex, strings.ToUpper(stream.CodecName)),
+								Name:            fmt.Sprintf("Audio %d&%d (%s Surround Version)", streamIndex, idx, strings.ToUpper(stream.CodecName)),
 								Language:        language,
 								ConvertToStereo: false,
 							})
@@ -142,9 +142,9 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 						variants = append(variants, AudioVariant{
 							MapInput: mapInput,
 							Type:     audioType,
-							Codec:    "aac",
+							Codec:    "ac3",
 							Bitrate:  &bitrate1,
-							Name:     "Audio " + strconv.Itoa(streamIndex) + " (AAC Surround)",
+							Name:     "Audio " + strconv.Itoa(streamIndex) + " (AC3 Surround)",
 							Language: language,
 						})
 						if createAlternateStereo {

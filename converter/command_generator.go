@@ -52,7 +52,7 @@ func audioConversionArgs(variants []suggest.AudioVariant) (args []string) {
 		indexS := strconv.Itoa(outputIndex)
 		// Map & codec
 		args = append(args, "-map", variant.MapInput,
-			"-c:a:"+indexS, variant.Codec, "-g", "60", "-sc_threshold", "0")
+			"-c:a:"+indexS, variant.Codec, "-g", "60")
 		// Bitrate
 		if variant.Bitrate != nil {
 			args = append(args, "-b:a:"+indexS, *variant.Bitrate)

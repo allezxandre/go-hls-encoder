@@ -13,6 +13,9 @@ import (
 	"syscall"
 )
 
+var GENERATE_IPLAYLIST = false
+var FFMPEG_MASTER_PLAYLIST = "ffmpeg_playlist.m3u8"
+
 type Conversion struct {
 	StreamURLs                 []string
 	mainCommand                *exec.Cmd
@@ -50,13 +53,18 @@ func (c Conversion) Exit() {
 
 var hlsSettings = []string{
 	"-f", "hls",
+	"-sc_threshold", "0",
+	"-hls_flags", "+split_by_time",
 	"-hls_time", "6",
 	"-hls_list_size", "0",
 	//"-hls_playlist_type", "event",
 	"-hls_segment_type", "fmp4",
-	//"-movflags", "frag_keyframe",
-	"-g", "60",
-	"-hls_flags", "split_by_time",
+	"-movflags", "+frag_keyframe",
+	//"-flags", "+cgop",
+	"-g", "30",
+	"-master_pl_name", FFMPEG_MASTER_PLAYLIST,
+	//"-hls_flags", "+single_file",
+	//"-hls_flags", "+independent_segments",
 }
 
 func ffmpegDefaultArguments() []string {
@@ -210,15 +218,23 @@ func callFFmpeg(logFilename string, args []string, masterCh <-chan string) (*exe
 		}
 		logFile.Close()
 		dir, filename := filepath.Split(masterFilename)
-		fmt.Printf("DEBUG: Everything is fine, but we're not generating iFrame Playlist...")
-		return // FIXME: remove this
+
 		fmt.Printf("DEBUG: Everything is fine. \n"+
 			"DEBUG: Generating I-FRAME-ONLY playlists on master in directory \"%v\"\n", dir)
-
-		err = iframe_playlist_generator.GeneratePlaylist(dir, filename)
+		_, err = iframe_playlist_generator.EnrichPlaylist(dir, filename, dir, FFMPEG_MASTER_PLAYLIST, filename)
 		if err != nil {
-			log.Println("An error happened genrating I-FRAME-ONLY playlist:", err)
+			log.Println("An error happened enriching playlist:", err)
 		}
+
+		if GENERATE_IPLAYLIST {
+			err = iframe_playlist_generator.GeneratePlaylist(dir, filename)
+			if err != nil {
+				log.Println("An error happened generating I-FRAME-ONLY playlist:", err)
+			}
+		} else {
+			fmt.Printf("DEBUG: Everything is fine, but we're not generating iFrame Playlist...")
+		}
+
 	}()
 	return cmd, nil
 }

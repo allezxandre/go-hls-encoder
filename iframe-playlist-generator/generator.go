@@ -10,10 +10,56 @@ import (
 	"github.com/grafov/m3u8"
 )
 
-func GeneratePlaylist(dir string, inFile string) error {
+func EnrichPlaylist(dirMaster, masterFilename, dirInfo, infoFilename, newName string) (string, error) {
+	// Open Playlist to "enrich"
+	inFileFullPath := filepath.Join(dirMaster, masterFilename)
+	p, _, t, err := variantsFromMaster(inFileFullPath)
+	if err != nil {
+		return "", err
+	}
+	if t != m3u8.MASTER {
+		log.Println("Cannot Enrich playlist", masterFilename, "as it is not a Master Playlist. Type:", t)
+		return "", nil
+	}
+	pMaster := p.(*m3u8.MasterPlaylist)
+	// Open other playlist
+	inFileFullPath = filepath.Join(dirInfo, infoFilename)
+	p_, _, t, err := variantsFromMaster(inFileFullPath)
+	if err != nil {
+		return "", err
+	}
+	if t != m3u8.MASTER {
+		log.Println("Cannot Enrich playlist", masterFilename, "as it is not a Master Playlist. Type:", t)
+		return "", nil
+	}
+	pInfo := p_.(*m3u8.MasterPlaylist)
+
+	// Use info from pInfo to enrich pMaster
+	for _, v := range pMaster.Variants {
+		updateVariant(pInfo, v)
+	}
+
+	// Write playlist
+	return writePlaylistToFile(pMaster, dirMaster, newName)
+}
+
+func updateVariant(playlistWithInfo *m3u8.MasterPlaylist, v *m3u8.Variant) {
+	for _, v_ := range playlistWithInfo.Variants {
+		if v_.URI == v.URI {
+			// Update v with v_
+			v.VariantParams.Bandwidth = v_.VariantParams.Bandwidth
+			if len(v_.VariantParams.Codecs) > 0 {
+				v.VariantParams.Codecs = v_.VariantParams.Codecs
+			}
+			break
+		}
+	}
+}
+
+func GeneratePlaylist(dir, inFile string) error {
 	// Retrieve variants
 	inFileFullPath := filepath.Join(dir, inFile)
-	variants, t, err := variantsFromMaster(inFileFullPath)
+	_, variants, t, err := variantsFromMaster(inFileFullPath)
 	if err != nil {
 		return err
 	}
@@ -42,7 +88,8 @@ func GeneratePlaylist(dir string, inFile string) error {
 		}
 		log.Println("DEBUG: Writing playlist")
 		// Write to new file
-		iframeFilename, err := writePlaylistToFile(iframePlaylist, dir, variant.URI)
+		iframePlaylist.TargetDuration -= 1
+		iframeFilename, err := writePlaylistToFile(iframePlaylist, dir, iframeOnlyFilename(variant.URI))
 		if err != nil {
 			log.Println("Cannot write I-FRAMES-ONLY playlist to file \""+variant.URI+
 				"\"... Carrying on with the others anyway. \n\tError:", err)
@@ -52,13 +99,12 @@ func GeneratePlaylist(dir string, inFile string) error {
 		// Append to master, if master
 		if t == m3u8.MASTER {
 			log.Println("DEBUG:        -> yes")
-			n, err := f.WriteString(fmt.Sprintf(
+			_, err := f.WriteString(fmt.Sprintf(
 				"#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=%d,URI=\"%v\"\n",
-				int(variant.Bandwidth)/3, iframeFilename))
+				int(variant.Bandwidth)/10, iframeFilename))
+			// TODO: To determine bandwidth, instead of dividing by 10, sum the size of all iFrames and divide by duration
 			if err != nil {
 				log.Println("Error writing to master:", err)
-			} else {
-				log.Println("Wrote", n, "bytes to", f.Name())
 			}
 		} else {
 			log.Println("DEBUG:        -> NO??? Something's wrong dude...")
@@ -73,30 +119,30 @@ func GeneratePlaylist(dir string, inFile string) error {
 // contained in an m3u8 file. Automatically checks the type
 // of the playlist (Master or Media playlist).
 //
-func variantsFromMaster(playlistPath string) ([]*m3u8.Variant, m3u8.ListType, error) {
+func variantsFromMaster(playlistPath string) (m3u8.Playlist, []*m3u8.Variant, m3u8.ListType, error) {
 	f, err := os.Open(playlistPath)
 	if err != nil {
-		return []*m3u8.Variant{}, 0, err
+		return nil, []*m3u8.Variant{}, 0, err
 	}
 	defer f.Close()
 	p, t, err := m3u8.DecodeFrom(f, false)
 	if err != nil {
-		return []*m3u8.Variant{}, 0, err
+		return nil, []*m3u8.Variant{}, 0, err
 	}
 	switch t {
 	case m3u8.MASTER:
-		p := p.(*m3u8.MasterPlaylist)
-		return p.Variants, t, nil
+		variants := p.(*m3u8.MasterPlaylist).Variants
+		return p, variants, t, nil
 	case m3u8.MEDIA:
 		p := p.(*m3u8.MediaPlaylist)
 		variant := m3u8.Variant{
 			URI:       playlistPath,
 			Chunklist: p,
 		}
-		return []*m3u8.Variant{&variant}, t, nil
+		return nil, []*m3u8.Variant{&variant}, t, nil
 	default:
 		err := errors.New("assertion error: unknown mediaplaylist type")
-		return []*m3u8.Variant{}, t, err
+		return nil, []*m3u8.Variant{}, t, err
 	}
 }
 
@@ -224,11 +270,8 @@ func iframeOnlyFilename(originalName string) (newName string) {
 	return
 }
 
-// writePlaylistToFile Writes the playlist to an IFrameFile
-// TODO: Split function between IFrame-Only and write
-func writePlaylistToFile(p *m3u8.MediaPlaylist, dir string, originalName string) (string, error) {
-	playlistFilename := iframeOnlyFilename(originalName)
-
+// writePlaylistToFile Writes the playlist to a file
+func writePlaylistToFile(p m3u8.Playlist, dir string, playlistFilename string) (string, error) {
 	playlistFullPath := filepath.Join(dir, playlistFilename)
 	f, err := os.OpenFile(playlistFullPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
