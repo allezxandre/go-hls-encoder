@@ -53,7 +53,6 @@ func (c Conversion) Exit() {
 
 var hlsSettings = []string{
 	"-f", "hls",
-	"-sc_threshold", "0",
 	"-hls_flags", "+split_by_time",
 	"-hls_time", "6",
 	"-hls_list_size", "0",
@@ -61,7 +60,7 @@ var hlsSettings = []string{
 	"-hls_segment_type", "fmp4",
 	"-movflags", "+frag_keyframe",
 	//"-flags", "+cgop",
-	"-g", "30",
+	"-g", "60",
 	"-master_pl_name", FFMPEG_MASTER_PLAYLIST,
 	//"-hls_flags", "+single_file",
 	//"-hls_flags", "+independent_segments",

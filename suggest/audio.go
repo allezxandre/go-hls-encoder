@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/allezxandre/go-hls-encoder/input"
-	"github.com/allezxandre/go-hls-encoder/probe"
-	"gitlab.com/joutube/joutube-server/jt-error"
 	"strconv"
 	"strings"
+
+	"github.com/allezxandre/go-hls-encoder/input"
+	"github.com/allezxandre/go-hls-encoder/probe"
+	jt_error "gitlab.com/joutube/joutube-server/jt-error"
 )
 
 func checkforAACsecondaryAudio(fileStreams []*probe.ProbeStream) (streamIndex int, err error) {
@@ -103,7 +104,7 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 							variants = append(variants, AudioVariant{
 								MapInput:        mapInput,
 								Type:            audioType,
-								Codec:           "copy",
+								Codec:           "eac3", // Could copy, but encoding allows resampling of audio
 								Name:            fmt.Sprintf("Audio %d (%s Surround)", streamIndex, strings.ToUpper(stream.CodecName)),
 								Language:        language,
 								ConvertToStereo: false,
@@ -142,9 +143,9 @@ func SuggestAudioVariants(probeDataInputs []*probe.ProbeData, createAlternateSte
 						variants = append(variants, AudioVariant{
 							MapInput: mapInput,
 							Type:     audioType,
-							Codec:    "ac3",
+							Codec:    "eac3",
 							Bitrate:  &bitrate1,
-							Name:     "Audio " + strconv.Itoa(streamIndex) + " (AC3 Surround)",
+							Name:     "Audio " + strconv.Itoa(streamIndex) + " (eAC3 Surround)",
 							Language: language,
 						})
 						if createAlternateStereo {

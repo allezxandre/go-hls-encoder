@@ -2,9 +2,10 @@ package converter
 
 import (
 	"fmt"
-	"github.com/allezxandre/go-hls-encoder/suggest"
 	"strconv"
 	"strings"
+
+	"github.com/allezxandre/go-hls-encoder/suggest"
 )
 
 func videoConversionArgs(variants []suggest.VideoVariant) (args []string) {
@@ -12,7 +13,7 @@ func videoConversionArgs(variants []suggest.VideoVariant) (args []string) {
 		indexS := strconv.Itoa(outputIndex)
 		// Map & codec
 		args = append(args, "-map", variant.MapInput,
-			"-c:v:"+indexS, variant.Codec, "-g", "60", "-sc_threshold", "0")
+			"-c:v:"+indexS, variant.Codec, "-g", "60")
 		if variant.Codec == "libx264" {
 			// Additional X264 parameters
 			args = append(args,
@@ -52,7 +53,12 @@ func audioConversionArgs(variants []suggest.AudioVariant) (args []string) {
 		indexS := strconv.Itoa(outputIndex)
 		// Map & codec
 		args = append(args, "-map", variant.MapInput,
-			"-c:a:"+indexS, variant.Codec, "-g", "60")
+			"-c:a:"+indexS, variant.Codec,
+			"-g", "60")
+		if variant.Codec != "copy" {
+			// From: https://stackoverflow.com/a/63995029/3997690
+			args = append(args, "-af", "aresample=async=1:first_pts=0")
+		}
 		// Bitrate
 		if variant.Bitrate != nil {
 			args = append(args, "-b:a:"+indexS, *variant.Bitrate)
